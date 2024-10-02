@@ -135,52 +135,67 @@ function PageOverlay({ pageLeaf }) {
 
 
 function FacsimilePageViewer({ item, leafIndex, findLeafFromSlug }) {
-
   const match = useParams();
   const activeLeaf = findLeafFromSlug(leafIndex, match);
-  const activeLeafIndexInt = activeLeaf.leafCursor;
-  const leftPage = activeLeaf.isRightSide ? leafIndex[activeLeafIndexInt - 1] || {} : activeLeaf;
-  const rightPage = activeLeaf.isRightSide ? activeLeaf : leafIndex[activeLeafIndexInt + 1];
-  const offLeftPage = leafIndex[leftPage.leafCursor - 1] || null
-  const offRightPage = leafIndex[rightPage.leafCursor + 1] || null
-  const offLeftNextPage = leafIndex[leftPage.leafCursor - 2] || null
-  const offRightNextPage = leafIndex[rightPage.leafCursor + 2] || null
+
+  // Determine leftPage and rightPage with safety checks
+  const activeLeafIndexInt = activeLeaf ? activeLeaf.leafCursor : null;
+  
+  const leftPage = activeLeaf && activeLeaf.isRightSide ? leafIndex[activeLeafIndexInt - 1] : activeLeaf;
+  const rightPage = activeLeaf && activeLeaf.isRightSide ? activeLeaf : leafIndex[activeLeafIndexInt + 1];
+
+  // If leftPage or rightPage are undefined, set them to an empty object
+  const safeLeftPage = leftPage || {};
+  const safeRightPage = rightPage || {};
+
+  const offLeftPage = leafIndex[safeLeftPage.leafCursor - 1] || null;
+  const offRightPage = leafIndex[safeRightPage.leafCursor + 1] || null;
+  const offLeftNextPage = leafIndex[safeLeftPage.leafCursor - 2] || null;
+  const offRightNextPage = leafIndex[safeRightPage.leafCursor + 2] || null;
+
   const goToPrevUrl = offLeftPage ? `/fax/${item.slug}/${offLeftPage.pageSlugLeaf}` : `/fax/${item.slug}`;
   const goToNextUrl = offRightPage ? `/fax/${item.slug}/${offRightPage.pageSlugLeaf}` : `/fax/${item.slug}`;
 
-
   useEffect(() => {
-    [offLeftNextPage, offRightNextPage, offLeftPage, offRightPage].forEach((page) => {
-      if (page) {
-        const img = new Image();
-        img.src = page.pageAssetUrl;
-      }
-    });
-  }, [match.pageNumber]);
+    if (activeLeaf) { // Ensure activeLeaf exists before proceeding
+      [offLeftNextPage, offRightNextPage, offLeftPage, offRightPage].forEach((page) => {
+        if (page) {
+          const img = new Image();
+          img.src = page.pageAssetUrl;
+        }
+      });
+    }
+  }, [offLeftNextPage, offRightNextPage, offLeftPage, offRightPage, activeLeaf]); // Include dependencies here
 
+  // Render error message if activeLeaf is not found
+  if (!activeLeaf) {
+    return <div>Page not found</div>; // Handle case where activeLeaf is undefined
+  }
 
   return (
     <div className="faxPageViewer noselect">
-    <div className="pageReferences">
-      <h6 style={{ marginRight: "3rem" }}>{leftPage.pageReference}</h6>
-      <h6 style={{ marginLeft: "3rem" }}>{rightPage.pageReference}</h6>
+      <div className="pageReferences">
+        <h6 style={{ marginRight: "3rem" }}>{safeLeftPage.pageReference || ""}</h6>
+        <h6 style={{ marginLeft: "3rem" }}>{safeRightPage.pageReference || ""}</h6>
       </div>
       <div className="pagesContainer">
         <Link to={goToPrevUrl} className="leftPage page">
-         {!!leftPage.pageAssetUrl && <img src={leftPage.pageAssetUrl} alt={`Page ${leftPage.pageSlugLeaf}`} />}
+          {!!safeLeftPage.pageAssetUrl && <img src={safeLeftPage.pageAssetUrl} alt={`Page ${safeLeftPage.pageSlugLeaf}`} />}
         </Link>
         <Link to={goToNextUrl} className="rightPage page">
-          <img src={rightPage.pageAssetUrl} alt={`Page ${rightPage.pageSlugLeaf}`} />
+          {!!safeRightPage.pageAssetUrl && <img src={safeRightPage.pageAssetUrl} alt={`Page ${safeRightPage.pageSlugLeaf}`} />}
         </Link>
       </div>
       <div className="pageNumbers">
-      <h6 style={{ marginRight: "3rem" }}>{true ? `Page ${leftPage.pageSlugLeaf}` : ''}</h6>
-      <h6 style={{ marginLeft: "3rem" }}>{true ? `Page ${rightPage.pageSlugLeaf}` : ''}</h6>
+        <h6 style={{ marginRight: "3rem" }}>{safeLeftPage.pageSlugLeaf ? `Page ${safeLeftPage.pageSlugLeaf}` : ''}</h6>
+        <h6 style={{ marginLeft: "3rem" }}>{safeRightPage.pageSlugLeaf ? `Page ${safeRightPage.pageSlugLeaf}` : ''}</h6>
       </div>
     </div>
   );
-
 }
+
+
+
 
 
 function Facsimiles() {
